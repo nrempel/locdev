@@ -2,6 +2,12 @@
 name = "locdev"
 version = "0.1.0"
 edition = "2021"
+description = "locdev is a command-line utility for managing your /etc/hosts file."
+authors = ["Nicholas Rempel <nbrempel@gmail.com>"]
+license = "MIT"
+keywords = ["localhost", "hosts", "local"]
+categories = ["command-line-utilities", "development-tools"]
+repository = "https://github.com/nrempel/locdev"
 
 [dependencies]
 clap = { version = "4.3.0", features = ["cargo", "derive"] }
