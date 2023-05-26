@@ -1,89 +1,81 @@
-use std::fs;
+use std::fs::{self, read_to_string, OpenOptions};
 use std::io::prelude::*;
-use std::process::exit;
+use std::process::ExitCode;
 
 use clap::{crate_version, Parser};
 use colored::*;
+use thiserror::Error;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let opts: Options = Options::parse();
 
-    match opts.subcmd {
+    let result = match opts.subcmd {
         SubCommand::Add(add) => add_hosts_entry(add).await,
         SubCommand::Remove(remove) => remove_hosts_entry(remove).await,
         SubCommand::List => print_current_entries().await,
+    };
+
+    match result {
+        Ok(msg) => {
+            println!("{msg}");
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("{err}");
+            ExitCode::FAILURE
+        }
     }
 }
 
-async fn add_hosts_entry(add: Add) {
-    let new_entry = format!("{} {}", add.ip.cyan(), add.hostname.yellow());
+async fn add_hosts_entry(add: Add) -> Result<ColoredString, Error> {
+    let new_entry = format!("{} {}", add.ip.cyan().bold(), add.hostname.magenta().bold());
     let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
 
-    match fs::read_to_string(HOSTS_PATH) {
-        Ok(contents) => {
-            if contents.lines().any(|line| line.ends_with(&add.hostname)) {
-                eprintln!("{}", format!("Entry already exists: {}", new_entry).red());
-                exit(1);
-            }
-        }
-        Err(e) => handle_permission_error(e),
+    let contents = read_to_string(HOSTS_PATH)?;
+    if contents.lines().any(|line| line.ends_with(&add.hostname)) {
+        return Err(Error::Generic(
+            format!("Entry already exists: {}", new_entry).red(),
+        ));
     }
 
-    match fs::OpenOptions::new().append(true).open(HOSTS_PATH) {
-        Ok(mut file) => match file.write_all(new_entry_line.as_bytes()) {
-            Ok(_) => {
-                println!(
-                    "{}",
-                    format!("Added entry to hosts file: {}", new_entry).green()
-                );
-            }
-            Err(e) => handle_permission_error(e),
-        },
-        Err(e) => handle_permission_error(e),
-    }
+    let mut file = OpenOptions::new().append(true).open(HOSTS_PATH)?;
+    file.write_all(new_entry_line.as_bytes())?;
+
+    Ok(format!("Added entry to hosts file: {}", new_entry).green())
 }
 
-async fn remove_hosts_entry(remove: Remove) {
+async fn remove_hosts_entry(remove: Remove) -> Result<ColoredString, Error> {
     let protected_hostnames = ["localhost", "broadcasthost"];
 
     if protected_hostnames.contains(&remove.hostname.as_str()) {
-        eprintln!(
-            "{}",
+        return Err(Error::Generic(
             format!(
                 "Cannot remove protected entry: {}",
-                remove.hostname.yellow()
+                remove.hostname.magenta().bold()
             )
-            .red()
-        );
-        exit(1);
+            .red(),
+        ));
     }
 
-    let mut hosts_file = match File::open(HOSTS_PATH).await {
-        Ok(file) => file,
-        Err(e) => {
-            handle_permission_error(e);
-            return;
-        }
-    };
-
+    let mut hosts_file = File::open(HOSTS_PATH).await?;
     let mut contents = String::new();
-    match hosts_file.read_to_string(&mut contents).await {
-        Ok(_) => {}
-        Err(e) => handle_permission_error(e),
-    }
+    hosts_file.read_to_string(&mut contents).await?;
 
-    let entry_to_remove = format!("{} {}", remove.ip, remove.hostname);
-    let entry_exists = contents.lines().any(|line| line == entry_to_remove);
+    let entry_to_remove = format!(
+        "{} {}",
+        remove.ip.cyan().bold(),
+        remove.hostname.magenta().bold()
+    );
+    let entry_to_remove_line = format!("{} {}", remove.ip, remove.hostname);
+    let entry_exists = contents.lines().any(|line| line == entry_to_remove_line);
 
     if !entry_exists {
-        eprintln!(
-            "{}",
-            format!("Entry does not exist: {}", entry_to_remove.yellow()).red()
-        );
-        exit(1);
+        return Err(Error::Generic(
+            format!("Entry does not exist: {}", entry_to_remove).red(),
+        ));
     }
 
     let entries: Vec<_> = contents
@@ -91,59 +83,32 @@ async fn remove_hosts_entry(remove: Remove) {
         .filter(|line| !line.ends_with(&remove.hostname))
         .collect();
 
-    match fs::write(HOSTS_PATH, format!("{}\n", entries.join("\n"))) {
-        Ok(_) => {
-            println!(
-                "{}",
-                format!(
-                    "Removed entry from hosts file: {} {}",
-                    remove.ip.cyan(),
-                    remove.hostname.yellow()
-                )
-                .blue()
-            );
-        }
-        Err(e) => handle_permission_error(e),
-    }
+    fs::write(HOSTS_PATH, format!("{}\n", entries.join("\n")))?;
+
+    Ok(format!(
+        "Removed entry from hosts file: {} {}",
+        remove.ip.cyan().bold(),
+        remove.hostname.magenta().bold()
+    )
+    .green())
 }
 
-async fn print_current_entries() {
-    let contents = match fs::read_to_string(HOSTS_PATH) {
-        Ok(c) => c,
-        Err(e) => {
-            handle_permission_error(e);
-            return;
-        }
-    };
+async fn print_current_entries() -> Result<ColoredString, Error> {
+    let contents = read_to_string(HOSTS_PATH)?;
 
-    for line in contents.lines() {
-        if line.starts_with('#') || line.is_empty() {
-            continue;
-        }
+    let current_entries = contents
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.is_empty())
+        .map(|e| {
+            let parts: Vec<&str> = e.split_whitespace().collect();
+            let ip = parts.first().unwrap_or(&"");
+            let hostname = parts.get(1).unwrap_or(&"");
+            format!("{} {}", ip.cyan().bold(), hostname.magenta().bold())
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 2 {
-            continue;
-        }
-
-        let ip = parts.first().unwrap_or(&"");
-        let hostname = parts.get(1).unwrap_or(&"");
-
-        println!("{} {}", ip.cyan(), hostname.yellow());
-    }
-}
-
-fn handle_permission_error(err: std::io::Error) {
-    if err.kind() == std::io::ErrorKind::PermissionDenied {
-        eprintln!(
-            "{}",
-            "Permission denied. Did you forget to use `sudo`?".red()
-        );
-    } else {
-        eprintln!("Error: {}", err);
-    }
-
-    exit(1);
+    Ok(current_entries.green())
 }
 
 #[derive(Parser)]
@@ -170,6 +135,14 @@ struct Add {
 struct Remove {
     ip: String,
     hostname: String,
+}
+
+#[derive(Error, Debug)]
+enum Error {
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("{0}")]
+    Generic(ColoredString),
 }
 
 const HOSTS_PATH: &str = "/etc/hosts";
