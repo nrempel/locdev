@@ -1,6 +1,6 @@
 [package]
 name = "locdev"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "locdev is a command-line utility for managing your /etc/hosts file."
 authors = ["Nicholas Rempel <nbrempel@gmail.com>"]
