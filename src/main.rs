@@ -12,8 +12,8 @@ async fn main() {
     let opts: Options = Options::parse();
 
     match opts.subcmd {
-        SubCommand::Add(a) => add_hosts_entry(a).await,
-        SubCommand::Remove(r) => remove_hosts_entry(r).await,
+        SubCommand::Add(add) => add_hosts_entry(add).await,
+        SubCommand::Remove(remove) => remove_hosts_entry(remove).await,
         SubCommand::List => print_current_entries().await,
     }
 }
