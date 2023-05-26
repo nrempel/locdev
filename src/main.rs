@@ -1,6 +1,5 @@
 use std::fs;
 use std::io::prelude::*;
-use std::process::exit;
 
 use clap::{crate_version, Parser};
 use colored::*;
@@ -8,17 +7,18 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ()> {
     let opts: Options = Options::parse();
 
     match opts.subcmd {
-        SubCommand::Add(a) => add_hosts_entry(a).await,
-        SubCommand::Remove(r) => remove_hosts_entry(r).await,
-        SubCommand::List => print_current_entries().await,
+        SubCommand::Add(a) => add_hosts_entry(a).await?,
+        SubCommand::Remove(r) => remove_hosts_entry(r).await?,
+        SubCommand::List => print_current_entries().await?,
     }
+    Ok(())
 }
 
-async fn add_hosts_entry(add: Add) {
+async fn add_hosts_entry(add: Add) -> Result<(), ()> {
     let new_entry = format!("{} {}", add.ip.cyan(), add.hostname.yellow());
     let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
 
@@ -26,10 +26,10 @@ async fn add_hosts_entry(add: Add) {
         Ok(contents) => {
             if contents.lines().any(|line| line.ends_with(&add.hostname)) {
                 eprintln!("{}", format!("Entry already exists: {}", new_entry).red());
-                exit(1);
+                return Err(())
             }
         }
-        Err(e) => handle_permission_error(e),
+        Err(e) => handle_permission_error(e)?,
     }
 
     match fs::OpenOptions::new().append(true).open(HOSTS_PATH) {
@@ -40,13 +40,14 @@ async fn add_hosts_entry(add: Add) {
                     format!("Added entry to hosts file: {}", new_entry).green()
                 );
             }
-            Err(e) => handle_permission_error(e),
+            Err(e) => handle_permission_error(e)?,
         },
-        Err(e) => handle_permission_error(e),
+        Err(e) => handle_permission_error(e)?,
     }
+    Ok(())
 }
 
-async fn remove_hosts_entry(remove: Remove) {
+async fn remove_hosts_entry(remove: Remove) -> Result<(), ()> {
     let protected_hostnames = ["localhost", "broadcasthost"];
 
     if protected_hostnames.contains(&remove.hostname.as_str()) {
@@ -58,21 +59,21 @@ async fn remove_hosts_entry(remove: Remove) {
             )
             .red()
         );
-        exit(1);
+        return Err(())
     }
 
     let mut hosts_file = match File::open(HOSTS_PATH).await {
         Ok(file) => file,
         Err(e) => {
             handle_permission_error(e);
-            return;
+            return Err(())
         }
     };
 
     let mut contents = String::new();
     match hosts_file.read_to_string(&mut contents).await {
         Ok(_) => {}
-        Err(e) => handle_permission_error(e),
+        Err(e) => handle_permission_error(e)?,
     }
 
     let entry_to_remove = format!("{} {}", remove.ip, remove.hostname);
@@ -83,7 +84,7 @@ async fn remove_hosts_entry(remove: Remove) {
             "{}",
             format!("Entry does not exist: {}", entry_to_remove.yellow()).red()
         );
-        exit(1);
+        return Err(());
     }
 
     let entries: Vec<_> = contents
@@ -103,16 +104,17 @@ async fn remove_hosts_entry(remove: Remove) {
                 .blue()
             );
         }
-        Err(e) => handle_permission_error(e),
+        Err(e) => handle_permission_error(e)?,
     }
+    Ok(())
 }
 
-async fn print_current_entries() {
+async fn print_current_entries() -> Result<(), ()> {
     let contents = match fs::read_to_string(HOSTS_PATH) {
         Ok(c) => c,
         Err(e) => {
-            handle_permission_error(e);
-            return;
+            handle_permission_error(e)?;
+            return Err(())
         }
     };
 
@@ -131,9 +133,10 @@ async fn print_current_entries() {
 
         println!("{} {}", ip.cyan(), hostname.yellow());
     }
+    Ok(())
 }
 
-fn handle_permission_error(err: std::io::Error) {
+fn handle_permission_error(err: std::io::Error) -> Result<(), ()> {
     if err.kind() == std::io::ErrorKind::PermissionDenied {
         eprintln!(
             "{}",
@@ -143,7 +146,7 @@ fn handle_permission_error(err: std::io::Error) {
         eprintln!("Error: {}", err);
     }
 
-    exit(1);
+    Err(())
 }
 
 #[derive(Parser)]
