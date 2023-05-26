@@ -113,6 +113,7 @@ async fn print_current_entries() -> Result<ColoredString, Error> {
 
 #[derive(Parser)]
 #[clap(version = crate_version!())]
+/// A simple CLI tool for managing your /etc/hosts file
 struct Options {
     #[clap(subcommand)]
     subcmd: SubCommand,
@@ -120,20 +121,27 @@ struct Options {
 
 #[derive(Parser)]
 enum SubCommand {
+    /// Add a new entry to your hosts file
     Add(Add),
+    /// Remove an entry from your hosts file
     Remove(Remove),
+    /// List all entries in your hosts file
     List,
 }
 
 #[derive(Parser)]
 struct Add {
+    /// The IP address to add
     ip: String,
+    /// The hostname to add
     hostname: String,
 }
 
 #[derive(Parser)]
 struct Remove {
+    /// The IP address to add
     ip: String,
+    /// The hostname to add
     hostname: String,
 }
 
