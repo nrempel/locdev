@@ -30,7 +30,7 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn add_hosts_entry(add: Add) -> Result<ColoredString, Error> {
+async fn add_hosts_entry(add: AddRemove) -> Result<ColoredString, Error> {
     let new_entry = format!("{} {}", add.ip.cyan().bold(), add.hostname.magenta().bold());
     let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
 
@@ -47,7 +47,7 @@ async fn add_hosts_entry(add: Add) -> Result<ColoredString, Error> {
     Ok(format!("Added entry to hosts file: {}", new_entry).green())
 }
 
-async fn remove_hosts_entry(remove: Remove) -> Result<ColoredString, Error> {
+async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
     let protected_hostnames = ["localhost", "broadcasthost"];
 
     if protected_hostnames.contains(&remove.hostname.as_str()) {
@@ -122,23 +122,15 @@ struct Options {
 #[derive(Parser)]
 enum SubCommand {
     /// Add a new entry to your hosts file
-    Add(Add),
+    Add(AddRemove),
     /// Remove an entry from your hosts file
-    Remove(Remove),
+    Remove(AddRemove),
     /// List all entries in your hosts file
     List,
 }
 
 #[derive(Parser)]
-struct Add {
-    /// The IP address to add
-    ip: String,
-    /// The hostname to add
-    hostname: String,
-}
-
-#[derive(Parser)]
-struct Remove {
+struct AddRemove {
     /// The IP address to add
     ip: String,
     /// The hostname to add
