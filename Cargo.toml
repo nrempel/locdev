@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "development-tools"]
 repository = "https://github.com/nrempel/locdev"
 
 [dependencies]
-clap = { version = "4.3.8", features = ["cargo", "derive"] }
+clap = { version = "4.3.23", features = ["cargo", "derive"] }
 colored = "2.0.0"
 thiserror = "1.0.40"
 tokio = { version = "1.32.0", features = [
