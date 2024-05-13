@@ -12,7 +12,7 @@ repository = "https://github.com/nrempel/locdev"
 [dependencies]
 clap = { version = "4.5.1", features = ["cargo", "derive"] }
 colored = "2.1.0"
-thiserror = "1.0.53"
+thiserror = "1.0.60"
 tokio = { version = "1.35.1", features = [
     "fs",
     "io-util",
