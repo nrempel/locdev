@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Renamed project from `locdev` to `hostman`
+- Renamed project from `locdev` to `hostie`
 - Updated to Rust edition 2024
 - Updated all dependencies to latest versions
 - Improved code quality with clippy fixes

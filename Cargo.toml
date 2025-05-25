@@ -1,13 +1,13 @@
 [package]
-name = "hostman"
+name = "hostie"
 version = "0.1.2"
 edition = "2024"
-description = "hostman is a command-line utility for managing your /etc/hosts file."
+description = "hostie is a command-line utility for managing your /etc/hosts file."
 authors = ["Nicholas Rempel <nbrempel@gmail.com>"]
 license = "MIT"
 keywords = ["hosts", "localhost", "development", "cli"]
 categories = ["command-line-utilities", "development-tools"]
-repository = "https://github.com/nrempel/hostman"
+repository = "https://github.com/nrempel/hostie"
 rust-version = "1.85"
 
 [dependencies]
