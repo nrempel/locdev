@@ -1,18 +1,19 @@
 [package]
 name = "locdev"
 version = "0.1.2"
-edition = "2021"
+edition = "2024"
 description = "locdev is a command-line utility for managing your /etc/hosts file."
 authors = ["Nicholas Rempel <nbrempel@gmail.com>"]
 license = "MIT"
 keywords = ["localhost", "hosts", "local"]
 categories = ["command-line-utilities", "development-tools"]
 repository = "https://github.com/nrempel/locdev"
+rust-version = "1.85"
 
 [dependencies]
-clap = { version = "4.5.1", features = ["cargo", "derive"] }
+clap = { version = "4.5.4", features = ["derive", "cargo"] }
 colored = "2.1.0"
-thiserror = "1.0.53"
+thiserror = "2.0.12"
 tokio = { version = "1.35.1", features = [
     "fs",
     "io-util",
