@@ -2,7 +2,7 @@ use std::fs::{self, OpenOptions, read_to_string};
 use std::io::prelude::*;
 use std::process::ExitCode;
 
-use clap::{Parser, crate_version};
+use clap::Parser;
 use colored::{ColoredString, Colorize};
 use thiserror::Error;
 use tokio::fs::File;
@@ -112,10 +112,9 @@ fn print_current_entries() -> Result<ColoredString, Error> {
 }
 
 #[derive(Parser)]
-#[clap(version = crate_version!())]
-/// A simple CLI tool for managing your /etc/hosts file
+#[command(author, version, about, long_about = None)]
 struct Options {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     subcmd: SubCommand,
 }
 
@@ -131,9 +130,12 @@ enum SubCommand {
 
 #[derive(Parser)]
 struct AddRemove {
-    /// The IP address to add
+    /// The IP address to use
+    #[arg(value_name = "IP")]
     ip: String,
-    /// The hostname to add
+
+    /// The hostname to associate with the IP address
+    #[arg(value_name = "HOSTNAME")]
     hostname: String,
 }
 

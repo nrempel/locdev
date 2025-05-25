@@ -30,7 +30,7 @@ fn test_help_flag() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("A simple CLI tool for managing your /etc/hosts file"));
+    assert!(stdout.contains("command-line utility for managing your /etc/hosts file"));
     assert!(stdout.contains("Usage:"));
 }
 
