@@ -1,13 +1,13 @@
 [package]
-name = "locdev"
+name = "hostman"
 version = "0.1.2"
 edition = "2024"
-description = "locdev is a command-line utility for managing your /etc/hosts file."
+description = "hostman is a command-line utility for managing your /etc/hosts file."
 authors = ["Nicholas Rempel <nbrempel@gmail.com>"]
 license = "MIT"
-keywords = ["localhost", "hosts", "local"]
+keywords = ["hosts", "localhost", "development", "cli"]
 categories = ["command-line-utilities", "development-tools"]
-repository = "https://github.com/nrempel/locdev"
+repository = "https://github.com/nrempel/hostman"
 rust-version = "1.85"
 
 [dependencies]

@@ -1,10 +1,10 @@
-# locdev 🛠️
+# hostman 🛠️
 
-[![Crates.io](https://img.shields.io/crates/v/locdev.svg)](https://crates.io/crates/locdev)
-[![GitHub Actions](https://github.com/nrempel/locdev/actions/workflows/rust.yml/badge.svg)](https://github.com/nrempel/locdev/actions)
-[![GitHub Releases](https://img.shields.io/github/release/nrempel/locdev.svg)](https://github.com/nrempel/locdev/releases)
+[![Crates.io](https://img.shields.io/crates/v/hostman.svg)](https://crates.io/crates/hostman)
+[![GitHub Actions](https://github.com/nrempel/hostman/actions/workflows/rust.yml/badge.svg)](https://github.com/nrempel/hostman/actions)
+[![GitHub Releases](https://img.shields.io/github/release/nrempel/hostman.svg)](https://github.com/nrempel/hostman/releases)
 
-locdev is a handy CLI tool that simplifies the process of adding, removing, and
+hostman is a handy CLI tool that simplifies the process of adding, removing, and
 listing entries in the hosts file. You no longer need to deal with manual and
 error-prone editing. Now, it's as simple as running a command.
 
@@ -18,25 +18,25 @@ error-prone editing. Now, it's as simple as running a command.
 
 ### Download Compiled Binaries
 
-You can download the compiled binaries for locdev from the
-[GitHub Releases](https://github.com/nrempel/locdev/releases) page. Choose the
+You can download the compiled binaries for hostman from the
+[GitHub Releases](https://github.com/nrempel/hostman/releases) page. Choose the
 binary that corresponds to your operating system and architecture, and place it
 in a directory included in your system's `PATH` environment variable.
 
 ### Install with Cargo
 
-To install locdev using Cargo, you'll need to have
+To install hostman using Cargo, you'll need to have
 [Rust](https://www.rust-lang.org/tools/install) installed on your system. Once
-Rust is installed, you can install locdev with Cargo:
+Rust is installed, you can install hostman with Cargo:
 
 ```bash
-cargo install locdev
+cargo install hostman
 ```
 
 ## Usage
 
 ```bash
-locdev [COMMAND]
+hostman [COMMAND]
 ```
 
 ### Commands
@@ -52,19 +52,19 @@ locdev [COMMAND]
 Add an entry to the hosts file:
 
 ```bash
-sudo locdev add 127.0.0.1 dev.local
+sudo hostman add 127.0.0.1 dev.local
 ```
 
 Remove an entry from the hosts file:
 
 ```bash
-sudo locdev remove 127.0.0.1 dev.local
+sudo hostman remove 127.0.0.1 dev.local
 ```
 
 Print the current entries in the hosts file:
 
 ```bash
-locdev list
+hostman list
 ```
 
 ## Note
