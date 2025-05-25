@@ -34,14 +34,14 @@ fn add_hosts_entry(add: &AddRemove) -> Result<ColoredString, Error> {
     let new_entry = format!("{} {}", add.ip.cyan().bold(), add.hostname.magenta().bold());
     let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
 
-    let contents = read_to_string(HOSTS_PATH)?;
+    let contents = read_to_string(&get_hosts_path())?;
     if contents.lines().any(|line| line.ends_with(&add.hostname)) {
         return Err(Error::Generic(
             format!("Entry already exists: {new_entry}").red(),
         ));
     }
 
-    let mut file = OpenOptions::new().append(true).open(HOSTS_PATH)?;
+    let mut file = OpenOptions::new().append(true).open(&get_hosts_path())?;
     file.write_all(new_entry_line.as_bytes())?;
 
     Ok(format!("Added entry to hosts file: {new_entry}").green())
@@ -60,7 +60,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
         ));
     }
 
-    let mut hosts_file = File::open(HOSTS_PATH).await?;
+    let mut hosts_file = File::open(&get_hosts_path()).await?;
     let mut contents = String::new();
     hosts_file.read_to_string(&mut contents).await?;
 
@@ -83,7 +83,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
         .filter(|line| !line.ends_with(&remove.hostname))
         .collect();
 
-    fs::write(HOSTS_PATH, format!("{}\n", entries.join("\n")))?;
+    fs::write(&get_hosts_path(), format!("{}\n", entries.join("\n")))?;
 
     Ok(format!(
         "Removed entry from hosts file: {} {}",
@@ -94,7 +94,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
 }
 
 fn print_current_entries() -> Result<ColoredString, Error> {
-    let contents = read_to_string(HOSTS_PATH)?;
+    let contents = read_to_string(&get_hosts_path())?;
 
     let current_entries = contents
         .lines()
@@ -145,4 +145,6 @@ enum Error {
     Generic(ColoredString),
 }
 
-const HOSTS_PATH: &str = "/etc/hosts";
+fn get_hosts_path() -> String {
+    std::env::var("HOSTIE_HOSTS_FILE").unwrap_or_else(|_| "/etc/hosts".to_string())
+}
