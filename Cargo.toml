@@ -11,10 +11,10 @@ repository = "https://github.com/nrempel/locdev"
 rust-version = "1.85"
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive", "cargo"] }
-colored = "2.1.0"
+clap = { version = "4.5.38", features = ["derive", "cargo"] }
+colored = "3.0.0"
 thiserror = "2.0.12"
-tokio = { version = "1.35.1", features = [
+tokio = { version = "1.45.1", features = [
     "fs",
     "io-util",
     "macros",

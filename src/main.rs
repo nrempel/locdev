@@ -1,9 +1,9 @@
-use std::fs::{self, read_to_string, OpenOptions};
+use std::fs::{self, OpenOptions, read_to_string};
 use std::io::prelude::*;
 use std::process::ExitCode;
 
-use clap::{crate_version, Parser};
-use colored::*;
+use clap::{Parser, crate_version};
+use colored::{ColoredString, Colorize};
 use thiserror::Error;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -13,9 +13,9 @@ async fn main() -> ExitCode {
     let opts: Options = Options::parse();
 
     let result = match opts.subcmd {
-        SubCommand::Add(add) => add_hosts_entry(add).await,
+        SubCommand::Add(add) => add_hosts_entry(&add),
         SubCommand::Remove(remove) => remove_hosts_entry(remove).await,
-        SubCommand::List => print_current_entries().await,
+        SubCommand::List => print_current_entries(),
     };
 
     match result {
@@ -30,21 +30,21 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn add_hosts_entry(add: AddRemove) -> Result<ColoredString, Error> {
+fn add_hosts_entry(add: &AddRemove) -> Result<ColoredString, Error> {
     let new_entry = format!("{} {}", add.ip.cyan().bold(), add.hostname.magenta().bold());
     let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
 
     let contents = read_to_string(HOSTS_PATH)?;
     if contents.lines().any(|line| line.ends_with(&add.hostname)) {
         return Err(Error::Generic(
-            format!("Entry already exists: {}", new_entry).red(),
+            format!("Entry already exists: {new_entry}").red(),
         ));
     }
 
     let mut file = OpenOptions::new().append(true).open(HOSTS_PATH)?;
     file.write_all(new_entry_line.as_bytes())?;
 
-    Ok(format!("Added entry to hosts file: {}", new_entry).green())
+    Ok(format!("Added entry to hosts file: {new_entry}").green())
 }
 
 async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
@@ -74,7 +74,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
 
     if !entry_exists {
         return Err(Error::Generic(
-            format!("Entry does not exist: {}", entry_to_remove).red(),
+            format!("Entry does not exist: {entry_to_remove}").red(),
         ));
     }
 
@@ -93,7 +93,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
     .green())
 }
 
-async fn print_current_entries() -> Result<ColoredString, Error> {
+fn print_current_entries() -> Result<ColoredString, Error> {
     let contents = read_to_string(HOSTS_PATH)?;
 
     let current_entries = contents
