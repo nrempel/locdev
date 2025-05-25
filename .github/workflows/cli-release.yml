@@ -1,0 +1,141 @@
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: hostman-linux-x86_64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: hostman-macos-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: hostman-macos-aarch64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: hostman-windows-x86_64.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare binary
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/hostman.exe ${{ matrix.name }}
+          else
+            cp target/${{ matrix.target }}/release/hostman ${{ matrix.name }}
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir release
+          find artifacts -type f -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          # Extract the version from the tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Extracting changelog for version: $VERSION"
+          
+          # Extract the section for this version from CHANGELOG.md
+          # Find the line with [VERSION] and extract until the next version or end
+          if [ -f CHANGELOG.md ]; then
+            awk -v version="$VERSION" '
+              /^## \[/ {
+                if (found) exit
+                if ($0 ~ "\\[" version "\\]") {
+                  found = 1
+                  print $0
+                  next
+                }
+              }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md > release_notes.md
+            
+            # Set the content as output (escape for GitHub Actions)
+            if [ -s release_notes.md ]; then
+              {
+                echo 'CHANGELOG<<EOF'
+                cat release_notes.md
+                echo EOF
+              } >> $GITHUB_OUTPUT
+            else
+              echo "CHANGELOG=Release $VERSION" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "CHANGELOG=Release $VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
