@@ -148,5 +148,11 @@ enum Error {
 }
 
 fn get_hosts_path() -> String {
-    std::env::var("HOSTIE_HOSTS_FILE").unwrap_or_else(|_| "/etc/hosts".to_string())
+    std::env::var("HOSTIE_HOSTS_FILE").unwrap_or_else(|_| {
+        if cfg!(windows) {
+            r"C:\Windows\System32\drivers\etc\hosts".to_string()
+        } else {
+            "/etc/hosts".to_string()
+        }
+    })
 }
