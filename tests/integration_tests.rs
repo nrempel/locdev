@@ -97,7 +97,7 @@ fn test_add_new_entry() {
     let hosts_file = create_test_hosts_file(initial_content);
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["add", "192.168.1.100", "test.local"])
+        .args(["add", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -115,7 +115,7 @@ fn test_add_duplicate_hostname() {
     let hosts_file = create_test_hosts_file(initial_content);
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["add", "192.168.1.200", "test.local"]) // Different IP, same hostname
+        .args(["add", "192.168.1.200", "test.local"]) // Different IP, same hostname
         .output()
         .expect("Failed to execute hostie");
 
@@ -131,7 +131,7 @@ fn test_remove_existing_entry() {
     let hosts_file = create_test_hosts_file(initial_content);
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["remove", "192.168.1.100", "test.local"])
+        .args(["remove", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -149,7 +149,7 @@ fn test_remove_nonexistent_entry() {
     let hosts_file = create_test_hosts_file(initial_content);
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["remove", "192.168.1.100", "nonexistent.local"])
+        .args(["remove", "192.168.1.100", "nonexistent.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -165,7 +165,7 @@ fn test_remove_protected_entry() {
     let hosts_file = create_test_hosts_file(initial_content);
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["remove", "127.0.0.1", "localhost"])
+        .args(["remove", "127.0.0.1", "localhost"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -204,7 +204,7 @@ fn test_add_to_empty_file() {
     let hosts_file = create_test_hosts_file("");
 
     let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
-        .args(&["add", "192.168.1.100", "test.local"])
+        .args(["add", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -223,7 +223,7 @@ fn test_multiple_operations() {
 
     // Add an entry
     let output = hostie_command_with_hosts_file(hosts_path)
-        .args(&["add", "192.168.1.100", "test.local"])
+        .args(["add", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
     assert!(output.status.success());
@@ -240,7 +240,7 @@ fn test_multiple_operations() {
 
     // Remove the entry
     let output = hostie_command_with_hosts_file(hosts_path)
-        .args(&["remove", "192.168.1.100", "test.local"])
+        .args(["remove", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
     assert!(output.status.success());
@@ -254,9 +254,14 @@ fn test_multiple_operations() {
 // Tests for error cases without sudo (these still apply)
 #[test]
 fn test_add_without_sudo_fails() {
+    // Skip this test if running as root (like in CI containers)
+    if std::env::var("USER").unwrap_or_default() == "root" {
+        return;
+    }
+
     // This should fail because we don't have permission to write to /etc/hosts
     let output = hostie_command()
-        .args(&["add", "192.168.1.100", "test.local"])
+        .args(["add", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -268,9 +273,14 @@ fn test_add_without_sudo_fails() {
 
 #[test]
 fn test_remove_without_sudo_fails() {
+    // Skip this test if running as root (like in CI containers)
+    if std::env::var("USER").unwrap_or_default() == "root" {
+        return;
+    }
+
     // This should fail because we don't have permission to write to /etc/hosts
     let output = hostie_command()
-        .args(&["remove", "192.168.1.100", "test.local"])
+        .args(["remove", "192.168.1.100", "test.local"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -299,7 +309,7 @@ fn test_invalid_command() {
 #[test]
 fn test_add_missing_arguments() {
     let output = hostie_command()
-        .args(&["add", "192.168.1.100"])
+        .args(["add", "192.168.1.100"])
         .output()
         .expect("Failed to execute hostie");
 
@@ -311,7 +321,7 @@ fn test_add_missing_arguments() {
 #[test]
 fn test_remove_missing_arguments() {
     let output = hostie_command()
-        .args(&["remove", "192.168.1.100"])
+        .args(["remove", "192.168.1.100"])
         .output()
         .expect("Failed to execute hostie");
 

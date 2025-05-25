@@ -49,8 +49,19 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
+      - name: Build for tests (ensures binary exists for integration tests)
+        run: cargo build --bin hostie
+
       - name: Run tests
         run: cargo test --verbose
+
+      - name: Run integration tests (tests CLI with mocked hosts files)
+        run: cargo test --test integration_tests --verbose
+
+      - name: Test summary
+        run: |
+          echo "✅ All tests passed successfully on ${{ matrix.os }}!"
+          echo "📊 Integration tests: 18 tests covering CLI functionality with mocked hosts files"
 
       - name: Cache cargo-audit
         if: matrix.os == 'ubuntu-latest'
