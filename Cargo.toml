@@ -14,12 +14,6 @@ rust-version = "1.85"
 clap = { version = "4.5.38", features = ["derive", "cargo"] }
 colored = "3.0.0"
 thiserror = "2.0.12"
-tokio = { version = "1.45.1", features = [
-    "fs",
-    "io-util",
-    "macros",
-    "rt-multi-thread",
-] }
 
 [dev-dependencies]
 tempfile = "3.20.0"

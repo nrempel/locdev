@@ -5,16 +5,13 @@ use std::process::ExitCode;
 use clap::Parser;
 use colored::{ColoredString, Colorize};
 use thiserror::Error;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     let opts: Options = Options::parse();
 
     let result = match opts.subcmd {
         SubCommand::Add(add) => add_hosts_entry(&add),
-        SubCommand::Remove(remove) => remove_hosts_entry(remove).await,
+        SubCommand::Remove(remove) => remove_hosts_entry(remove),
         SubCommand::List => print_current_entries(),
     };
 
@@ -32,22 +29,32 @@ async fn main() -> ExitCode {
 
 fn add_hosts_entry(add: &AddRemove) -> Result<ColoredString, Error> {
     let new_entry = format!("{} {}", add.ip.cyan().bold(), add.hostname.magenta().bold());
-    let new_entry_line = format!("{} {}\n", add.ip, add.hostname);
+    let new_entry_line = format!("{} {}", add.ip, add.hostname);
 
     let contents = read_to_string(get_hosts_path())?;
-    if contents.lines().any(|line| line.ends_with(&add.hostname)) {
+
+    // Check for exact hostname match (not just ends_with)
+    let hostname_exists = contents
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
+        .any(|line| {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            parts.get(1).is_some_and(|h| h == &add.hostname)
+        });
+
+    if hostname_exists {
         return Err(Error::Generic(
             format!("Entry already exists: {new_entry}").red(),
         ));
     }
 
     let mut file = OpenOptions::new().append(true).open(get_hosts_path())?;
-    file.write_all(new_entry_line.as_bytes())?;
+    file.write_all(format!("{}\n", new_entry_line).as_bytes())?;
 
     Ok(format!("Added entry to hosts file: {new_entry}").green())
 }
 
-async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
+fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
     let protected_hostnames = ["localhost", "broadcasthost"];
 
     if protected_hostnames.contains(&remove.hostname.as_str()) {
@@ -60,9 +67,7 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
         ));
     }
 
-    let mut hosts_file = File::open(get_hosts_path()).await?;
-    let mut contents = String::new();
-    hosts_file.read_to_string(&mut contents).await?;
+    let contents = read_to_string(get_hosts_path())?;
 
     let entry_to_remove = format!(
         "{} {}",
@@ -70,7 +75,15 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
         remove.hostname.magenta().bold()
     );
     let entry_to_remove_line = format!("{} {}", remove.ip, remove.hostname);
-    let entry_exists = contents.lines().any(|line| line == entry_to_remove_line);
+
+    // Check for exact IP+hostname match
+    let entry_exists = contents
+        .lines()
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
+        .any(|line| {
+            let normalized = line.split_whitespace().collect::<Vec<_>>().join(" ");
+            normalized == entry_to_remove_line
+        });
 
     if !entry_exists {
         return Err(Error::Generic(
@@ -78,12 +91,27 @@ async fn remove_hosts_entry(remove: AddRemove) -> Result<ColoredString, Error> {
         ));
     }
 
+    // Remove only the exact matching line
     let entries: Vec<_> = contents
         .lines()
-        .filter(|line| !line.ends_with(&remove.hostname))
+        .filter(|line| {
+            if line.trim().is_empty() || line.starts_with('#') {
+                true // Keep comments and empty lines
+            } else {
+                let normalized = line.split_whitespace().collect::<Vec<_>>().join(" ");
+                normalized != entry_to_remove_line
+            }
+        })
         .collect();
 
-    fs::write(get_hosts_path(), format!("{}\n", entries.join("\n")))?;
+    // Write back with proper formatting (single newline at end)
+    let new_content = if entries.is_empty() {
+        String::new()
+    } else {
+        format!("{}\n", entries.join("\n"))
+    };
+
+    fs::write(get_hosts_path(), new_content)?;
 
     Ok(format!(
         "Removed entry from hosts file: {} {}",

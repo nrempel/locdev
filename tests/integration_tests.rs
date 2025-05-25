@@ -340,3 +340,153 @@ fn test_remove_missing_arguments() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("required") || stderr.contains("argument"));
 }
+
+// NEW TESTS TO DEMONSTRATE BUGS AND SPECIFY CORRECT BEHAVIOR
+
+#[test]
+fn test_add_hostname_collision_false_positive_bug() {
+    // BUG: Current implementation uses line.ends_with() which causes false positives
+    let initial_content = "127.0.0.1 localhost\n192.168.1.1 mytest.local\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    // This should succeed because "test.local" is different from "mytest.local"
+    // But current implementation will fail because "mytest.local".ends_with("test.local") is false
+    // Actually, let me test the real bug case:
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .args(["add", "192.168.1.200", "host"]) // Should fail because "localhost".ends_with("host") is true
+        .output()
+        .expect("Failed to execute hostie");
+
+    // Current buggy behavior: this will fail even though "host" != "localhost"
+    // Correct behavior: this should succeed because they're different hostnames
+    assert!(
+        output.status.success(),
+        "Should allow adding 'host' when 'localhost' exists"
+    );
+
+    let content = fs::read_to_string(hosts_file.path()).unwrap();
+    assert!(content.contains("192.168.1.200 host"));
+}
+
+#[test]
+fn test_add_exact_hostname_duplicate_should_fail() {
+    // This test specifies the CORRECT behavior for actual duplicates
+    let initial_content = "127.0.0.1 localhost\n192.168.1.100 test.local\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    // This should fail because "test.local" already exists (exact match)
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .args(["add", "192.168.1.200", "test.local"])
+        .output()
+        .expect("Failed to execute hostie");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("already exists"));
+}
+
+#[test]
+fn test_remove_exact_entry_only() {
+    // BUG: Current implementation removes any line ending with hostname
+    let initial_content = "127.0.0.1 localhost\n192.168.1.100 myhost\n192.168.1.200 host\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    // Remove "host" should only remove the exact "192.168.1.200 host" entry
+    // It should NOT remove "myhost" even though "myhost".ends_with("host") is true
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .args(["remove", "192.168.1.200", "host"])
+        .output()
+        .expect("Failed to execute hostie");
+
+    assert!(output.status.success());
+
+    let content = fs::read_to_string(hosts_file.path()).unwrap();
+    assert!(
+        !content.contains("192.168.1.200 host"),
+        "Should remove the exact entry"
+    );
+    assert!(
+        content.contains("192.168.1.100 myhost"),
+        "Should NOT remove similar hostnames"
+    );
+    assert!(
+        content.contains("127.0.0.1 localhost"),
+        "Should preserve other entries"
+    );
+}
+
+#[test]
+fn test_remove_by_hostname_only_removes_matching_ip() {
+    // Current implementation checks exact IP+hostname match for existence but removes by hostname only
+    // This is inconsistent - let's specify the correct behavior
+    let initial_content = "127.0.0.1 test.local\n192.168.1.100 test.local\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    // Remove specific IP+hostname combination
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .args(["remove", "192.168.1.100", "test.local"])
+        .output()
+        .expect("Failed to execute hostie");
+
+    assert!(output.status.success());
+
+    let content = fs::read_to_string(hosts_file.path()).unwrap();
+    assert!(
+        !content.contains("192.168.1.100 test.local"),
+        "Should remove the specific entry"
+    );
+    assert!(
+        content.contains("127.0.0.1 test.local"),
+        "Should preserve other IPs with same hostname"
+    );
+}
+
+#[test]
+fn test_file_format_preservation() {
+    // Test that we don't add extra newlines or mess up formatting
+    let initial_content = "127.0.0.1 localhost\n192.168.1.1 router.local\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    // Add an entry
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .args(["add", "192.168.1.100", "test.local"])
+        .output()
+        .expect("Failed to execute hostie");
+    assert!(output.status.success());
+
+    let content = fs::read_to_string(hosts_file.path()).unwrap();
+
+    // Should not have double newlines or extra whitespace
+    assert!(
+        !content.contains("\n\n"),
+        "Should not create double newlines"
+    );
+    assert!(content.ends_with('\n'), "Should end with single newline");
+
+    // Count lines to ensure proper formatting
+    let lines: Vec<&str> = content.lines().collect();
+    assert_eq!(lines.len(), 3, "Should have exactly 3 lines");
+    assert!(
+        lines[2] == "192.168.1.100 test.local",
+        "New entry should be properly formatted"
+    );
+}
+
+#[test]
+fn test_whitespace_handling_in_entries() {
+    // Test that we handle various whitespace scenarios correctly
+    let initial_content = "127.0.0.1\tlocalhost\n192.168.1.1  router.local\n";
+    let hosts_file = create_test_hosts_file(initial_content);
+
+    let output = hostie_command_with_hosts_file(hosts_file.path().to_str().unwrap())
+        .arg("list")
+        .output()
+        .expect("Failed to execute hostie");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Should handle both tab and multiple spaces
+    assert!(stdout.contains("localhost"));
+    assert!(stdout.contains("router.local"));
+}
