@@ -265,8 +265,8 @@ fn test_multiple_operations() {
 // Tests for error cases without sudo (these still apply)
 #[test]
 fn test_add_without_sudo_fails() {
-    // Skip this test if running as root (like in CI containers)
-    if std::env::var("USER").unwrap_or_default() == "root" {
+    // Skip this test if running as root (like in CI containers) or on Windows where permissions work differently
+    if std::env::var("USER").unwrap_or_default() == "root" || cfg!(windows) {
         return;
     }
 
@@ -284,8 +284,8 @@ fn test_add_without_sudo_fails() {
 
 #[test]
 fn test_remove_without_sudo_fails() {
-    // Skip this test if running as root (like in CI containers)
-    if std::env::var("USER").unwrap_or_default() == "root" {
+    // Skip this test if running as root (like in CI containers) or on Windows where permissions work differently
+    if std::env::var("USER").unwrap_or_default() == "root" || cfg!(windows) {
         return;
     }
 
