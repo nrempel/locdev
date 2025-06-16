@@ -11,7 +11,7 @@ repository = "https://github.com/nrempel/hostie"
 rust-version = "1.85"
 
 [dependencies]
-clap = { version = "4.5.38", features = ["derive", "cargo"] }
+clap = { version = "4.5.40", features = ["derive", "cargo"] }
 colored = "3.0.0"
 thiserror = "2.0.12"
 
